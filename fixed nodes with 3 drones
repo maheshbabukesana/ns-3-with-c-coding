@@ -1,0 +1,1295 @@
+/* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
+/*
+ * Copyright (c) 2008,2009 IITP RAS
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation;
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ *
+ * Author: Kirill Andreev <andreev@iitp.ru>
+ *
+ *
+ * By default this script creates m_xSize * m_ySize square grid topology with
+ * IEEE802.11s stack installed at each node with peering management
+ * and HWMP protocol.
+ * The side of the square cell is defined by m_step parameter.
+ * When topology is created, UDP ping is installed to opposite corners
+ * by diagonals. packet size of the UDP ping and interval between two
+ * successive packets is configurable.
+ * 
+ *  m_xSize * step
+ *  |<--------->|
+ *   step
+ *  |<--->|
+ *  * --- * --- * <---Ping sink  _
+ *  | \   |   / |                ^
+ *  |   \ | /   |                |
+ *  * --- * --- * m_ySize * step |
+ *  |   / | \   |                |
+ *  | /   |   \ |                |
+ *  * --- * --- *                _
+ *  ^ Ping source
+ *
+ *  See also MeshTest::Configure to read more about configurable
+ *  parameters.
+ */
+
+
+#include "ns3/core-module.h"
+#include "ns3/internet-module.h"
+#include "ns3/network-module.h"
+#include "ns3/applications-module.h"
+#include "ns3/wifi-module.h"
+#include "ns3/mesh-module.h"
+#include "ns3/mobility-module.h"
+#include "ns3/mesh-helper.h"
+#include "ns3/stats-module.h"
+#include "ns3/nstime.h"
+#include "ns3/flow-monitor.h"
+#include "ns3/flow-classifier.h"
+#include "ns3/flow-monitor-helper.h"
+#include "ns3/sqlite-data-output.h"
+#include "ns3/data-output-interface.h"
+#include "ns3/evalvid-client.h"
+#include "ns3/evalvid-server.h"
+#include "ns3/evalvid-client-server-helper.h"
+#include <boost/format.hpp>
+
+//#include "time-data-calculators.h"
+
+#include <sqlite3.h>
+#include <iostream>
+#include <sstream>
+#include <fstream>
+#include <ctime>
+
+using namespace ns3;
+
+
+NS_LOG_COMPONENT_DEFINE ("TestMeshScript");
+
+
+
+ void TxCallback (Ptr<CounterCalculator<uint32_t> > datac,
+                 std::string path, Ptr<const Packet> packet) {
+  NS_LOG_INFO ("Sent frame counted in " <<
+               datac->GetKey ());
+  datac->Update ();
+  // end TxCallback
+} 
+
+
+void RxCallback (Ptr<CounterCalculator<uint32_t> > datac,
+                 std::string path, Ptr<const Packet> packet, const Address &) {
+  NS_LOG_INFO ("Sent frame counted in " <<
+               datac->GetKey ());
+  datac->Update ();
+  // end TxCallback
+} 
+
+ void
+RouteDiscoveryTimeSniffer (Ptr<TimeMinMaxAvgTotalCalculator> datac, bool info, std::string context, Time time)
+{
+ 
+  if (info == true ) {
+          // std::cout<<"RouteDiscoveryTime  :"  <<time.GetMilliSeconds()<<std::endl;  
+}
+  datac-> Update(time);
+ 
+}
+
+int contatore = 1;
+int32_t accumul=0;
+int32_t med2000=0;
+int32_t med4000=0;
+int32_t med6000=0;
+int32_t med8000=0;
+int32_t med10000=0;
+int32_t med12000=0;
+int32_t med14000=0;
+int32_t med16000=0;
+int32_t med18000=0;
+int32_t window_size= 2000;
+
+
+  void
+EndtoEndTimeSniffer (Ptr<TimeMinMaxAvgTotalCalculator> datac, bool info, std::string context, Time time)
+{
+ 
+   
+  accumul = accumul + time.GetMilliSeconds();
+ 
+  if (info == true ) {
+    
+  std::cout<< "numero" << contatore << "           EndtoEndDelay  :"  <<time.GetMilliSeconds()<< std::endl;
+}
+
+ 
+  datac-> Update(time);
+  
+if ( window_size== 2000) { //Case of window composed by 2000 packets
+  switch (contatore)
+    {
+    case 2000: 
+       {
+           
+           
+           med2000=accumul/2000;
+           accumul=0;
+           break;  
+      }
+     case 4000: 
+       {
+          
+           
+           med4000= accumul/2000;
+           accumul=0;
+           break;  
+      }
+   
+     case 6000: 
+       {
+        
+          
+           med6000= accumul/2000;
+           accumul=0;
+           break;  
+      }
+     case 8000: 
+       {
+          
+        
+           med8000= accumul/2000;
+           accumul=0;
+           break;  
+      }
+     case 10000: 
+       {
+           
+          med10000= accumul/2000; 
+          accumul=0;
+           break;  
+      }
+    case 12000: 
+       {
+           
+           med12000= accumul/2000;
+           accumul=0;
+           break;  
+      }
+
+     case 14000: 
+       {
+           
+           med14000= accumul/2000;
+           accumul=0;
+           break;  
+      }
+     case 16000: 
+       {
+           
+           med16000= accumul/2000;
+           accumul=0;
+           break;  
+      }
+     case 18000: 
+       {
+           
+           med18000= accumul/2000;
+           accumul=0;
+           break;  
+      }
+
+    default:
+      {
+        break;
+      }
+    }
+}
+else { //Case of window composed by 4000 packets
+switch (contatore)
+    {
+    case 4000: 
+       {
+           
+           std::cout << "CIAOOO aaaa" << std::endl;
+           med2000=accumul/4000;
+           accumul=0;
+           break;  
+      }
+     case 8000: 
+       {
+          
+           std::cout << "CIAOOOOOOO Bbbbbb" << std::endl;
+           med4000= accumul/4000;
+           accumul=0;
+           break;  
+      }
+   
+     case 12000: 
+       {
+        
+          
+           med6000= accumul/4000;
+           accumul=0;
+           break;  
+      }
+     case 16000: 
+       {
+          
+        
+           med8000= accumul/4000;
+           accumul=0;
+           break;  
+      }
+     case 20000: 
+       {
+           
+          med10000= accumul/4000; 
+          accumul=0;
+           break;  
+      }
+    case 24000: 
+       {
+           
+           med12000= accumul/4000;
+           accumul=0;
+           break;  
+      }
+
+     case 28000: 
+       {
+           
+           med14000= accumul/4000;
+           accumul=0;
+           break;  
+      }
+     case 32000: 
+       {
+           
+           med16000= accumul/4000;
+           accumul=0;
+           break;  
+      }
+     case 36000: 
+       {
+           
+           med18000= accumul/4000;
+           accumul=0;
+           break;  
+      }
+
+    default:
+      {
+        break;
+      }
+    }
+}
+   contatore++;
+}
+
+
+ void
+HopCountSniffer (Ptr<MinMaxAvgTotalCalculator<uint8_t> > datac, bool info, std::string context, uint8_t a)
+{
+  
+   if (info == true ) {
+       std::cout << "HopCount : " << unsigned(a) << "\n" << std::endl;
+   }
+  datac-> Update(a);
+ 
+}
+
+void
+LinkOpenCounter (Ptr<CounterCalculator<uint8_t> > datac, bool info, std::string context, const Mac48Address &a)
+{
+  
+   if (info == true ) {
+     uint8_t buffer[6];     
+       (&a)->CopyTo(buffer);
+
+   boost::format fmt("%02X:%02X:%02X:%02X:%02X:%02X");
+  for (int i = 0; i != 6; ++i)
+    fmt % static_cast<unsigned int>(buffer[i]);
+    std::cout << "\n OPEN with    " << fmt << "\n" << std::endl;
+    // std::cout << "DRONE : LinkOpen with : "<< (buffer[0]).c_str() <<" \n" << std::endl;
+   }
+  datac-> Update();
+ 
+}
+
+void
+LinkCloseCounter (Ptr<CounterCalculator<uint8_t> > datac, bool info, std::string context, const Mac48Address &a)
+{
+  
+   if (info == true ) {
+     uint8_t buffer2[6];     
+       (&a)->CopyTo(buffer2);
+
+   boost::format fmt("%02X:%02X:%02X:%02X:%02X:%02X");
+  for (int i = 0; i != 6; ++i)
+    fmt % static_cast<unsigned int>(buffer2[i]);
+    std::cout << "\n CLOSE with    " << fmt << "\n" << std::endl;
+    // std::cout << "DRONE : LinkOpen with : "<< (buffer[0]).c_str() <<" \n" << std::endl;
+   }
+  datac-> Update();
+ 
+}
+
+ static void 
+CourseChange (Ptr <const MobilityModel> mob0, double square_side, double drone_height,  std::string foo, Ptr<const MobilityModel> mobility)
+{
+  MobilityHelper mobhelp;
+  Vector pos = mobility->GetPosition ();
+  Vector vel = mobility->GetVelocity ();
+  
+  //Vector designated ((40.0),(40.0),(50.0));
+  //const Vector pos0 ((0.0),(0.0),(0.0));
+  Vector designated ((square_side),(square_side),(drone_height));
+  
+  std::cout << "\n" << (Simulator::Now ()).GetSeconds() << "sec   Poisition of the drone: x=" << pos.x << ", y=" << pos.y
+            << ", z=" << pos.z << "; VEL:x=" << vel.x << ", y=" << vel.y
+            << ", z=" << vel.z << std::endl; 
+ std::cout << "DISTANCE of the drone FROM NODE 1(SERVER) = " << mobility->GetDistanceFrom(mob0) << "\n" << std::endl; 
+            
+/*  if( CalculateDistance(pos,designated1) <0.3  )//(pos.x == 40) && (pos.y == 40) ) 
+     { 
+        
+       mobility =  mob0->GetObject<MobilityModel> ();
+       pos = mobility->GetPosition ();
+  vel = mobility->GetVelocity ();
+        std::cout << "model=" << mobility <<  "aaaaa" << std::endl;
+         std::cout << "\n" << Simulator::Now () << " " << "model=" << mobility << ", Poisition of the drone: x=" << pos.x << ", y=" << pos.y
+            << ", z=" << pos.z << "; VEL:x=" << vel.x << ", y=" << vel.y
+            << ", z=" << vel.z << std::endl;
+       //NON SI PUO MODIFICARE il modello che gli passo const, e non posso non passarglielo const.
+         
+          } 
+    else
+         std::cout << "bbbbb" << CalculateDistance(pos,designated1) << std::endl; */
+ 
+}
+
+
+static void ChangeVelocity (Ptr <Node> node , Vector vel)
+{
+    Ptr <ConstantVelocityMobilityModel> mobility = node->GetObject<ConstantVelocityMobilityModel> ();
+    mobility->SetVelocity(vel);
+    
+}
+
+
+
+
+
+  
+class MeshTest
+{
+public:
+  /// Init test
+  MeshTest ();
+  /// Configure test from command line arguments
+  void Configure (int argc, char ** argv);
+  /// Run test
+  int Run ();
+private:
+  int       m_xSize;
+  int       m_ySize;
+  uint32_t  m_Nnodes;
+  double    m_drone_height;
+  double    m_hop_range;
+  double    m_step; 
+  double    m_square_side;
+  double    m_randomStart;
+  double    m_regime;
+  double    m_totalTime;
+  double    m_vel_drone_doub;
+  bool      m_print_info;
+  bool      m_print_delay;
+  std::string    m_vel_drone;
+  std::string    m_direction_drone;
+  double    m_packetInterval;
+  uint16_t  m_packetSize;
+  uint32_t  m_nIfaces;
+  uint32_t    m_type;
+  bool      m_chan;
+  bool      m_pcap;
+  std::string m_stack;
+  std::string experiment;
+  std::string format;
+  std::string strategy;
+  std::string input;
+  std::string runID;
+  std::stringstream sstr1;
+  std::stringstream sstr2;
+  
+  std::string m_root;
+  std::string m_root2;
+  DataCollector data;
+  /// List of network nodes
+  NodeContainer nodes;
+  NodeContainer drone;
+  NodeContainer dronerelay;
+  /// List of all mesh point devices
+  NetDeviceContainer meshDevices;
+  NetDeviceContainer droneDevices;
+  NetDeviceContainer dronerelayDevices;
+  //Addresses of interfaces:
+  Ipv4InterfaceContainer interfaces;
+  Ipv4InterfaceContainer droneinterfaces;
+  Ipv4InterfaceContainer dronerelayinterfaces;
+  // MeshHelper. Report is not static methods
+  MeshHelper mesh;
+  MeshHelper mesh2;
+private:
+  /// Create nodes and setup their mobility
+  void CreateNodes ();
+  /// Install internet m_stack on nodes
+  void InstallInternetStack ();
+  /// Install applications
+  void InstallApplication ();
+  /// Print mesh devices diagnostics
+  void Report ();
+ 
+};
+
+ 
+   
+  
+
+  
+MeshTest::MeshTest () :
+  m_xSize (3),
+  m_ySize (3),
+  m_Nnodes(16),
+  m_drone_height(30.0),
+  m_hop_range(1.0),
+  m_step (50.0), //variabile primaria
+  m_square_side(m_step*3),
+  m_randomStart (0.1),
+  m_regime(50.0),
+  m_totalTime (120.0), //mio solito default 120
+  m_vel_drone_doub(5.0),
+  m_print_info(false),
+  m_print_delay(false),
+  m_vel_drone("5.0"),
+  m_direction_drone("0.785398"), //radianti 0.785398 di default, 45 gradi 
+  m_packetInterval (m_step*sqrt(2)/m_vel_drone_doub),
+  m_packetSize (1024),
+  m_nIfaces (1),
+  m_type(72024),
+  m_chan (false),//L'HO CAMBIATO
+  m_pcap (false),
+  m_stack ("ns3::Dot11sStack"),
+  experiment("newmesh"),
+  format("omnet"),
+  strategy("fixed"),
+  m_root ("ff:ff:ff:ff:ff:ff"),
+  m_root2 ("00:00:00:00:00:01")
+{
+}
+void
+MeshTest::Configure (int argc, char *argv[])
+{
+  CommandLine cmd;
+  cmd.AddValue ("x-size", "Number of nodes in a row grid. [6]", m_xSize);
+  cmd.AddValue ("y-size", "Number of rows in a grid. [6]", m_ySize);
+  cmd.AddValue ("step",   "Distance between two nodes on the same row of the grid[m]", m_step);
+  cmd.AddValue ("Nnodes", "Number of nodes in the square", m_Nnodes);
+  //cmd.AddValue ("square_side", "The side of the square[m]", m_square_side);
+  cmd.AddValue ("format",  "data format for statistics", format);
+   cmd.AddValue ("print_info",  "print additional info", m_print_info);
+   cmd.AddValue ("print_delay",  "print additional info", m_print_delay);
+  cmd.AddValue ("vel_drone",  "the speed of the drone [m/s]", m_vel_drone_doub);
+   cmd.AddValue ("vel_drone_string",  "the speed of the drone [string m/s]", m_vel_drone);
+   cmd.AddValue ("hop_range",  "the hop range", m_hop_range);
+  /*
+   * As soon as starting node means that it sends a beacon,
+   * simultaneous start is not good.
+   */
+  cmd.AddValue ("start",  "Maximum random start delay, seconds. [0.1 s]", m_randomStart);
+  cmd.AddValue ("time",  "Simulation time, seconds [100 s]", m_totalTime);
+  //cmd.AddValue ("packet-interval",  "Interval between packets in UDP ping, seconds [0.001 s]", m_packetInterval);
+  cmd.AddValue ("packet-size",  "Size of packets in UDP ping", m_packetSize);
+  cmd.AddValue ("interfaces", "Number of radio interfaces used by each mesh point. [1]", m_nIfaces);
+  cmd.AddValue ("channels",   "Use different frequency channels for different interfaces. [0]", m_chan);
+  cmd.AddValue ("pcap",   "Enable PCAP traces on interfaces. [0]", m_pcap);
+  cmd.AddValue ("stack",  "Type of protocol stack. ns3::Dot11sStack by default", m_stack);
+  cmd.AddValue ("root", "Mac address of root mesh point in HWMP", m_root);
+  cmd.AddValue ("height", "the height of the drone", m_drone_height);
+  cmd.AddValue ("type", "quality and frame rate of video", m_type);
+
+  cmd.Parse (argc, argv);
+  NS_LOG_DEBUG ("Grid:" << m_xSize << "*" << m_ySize);
+  NS_LOG_DEBUG ("Simulation time: " << m_totalTime << " s");
+
+ 
+
+}
+void
+MeshTest::CreateNodes ()
+{ 
+  /*
+   * Create m_ySize*m_xSize stations to form a grid topology
+   */
+  //nodes.Create (m_ySize*m_xSize);
+    nodes.Create(m_Nnodes);
+  //create the drone
+    drone.Create(1);
+   dronerelay.Create(2);  
+
+   // Configure YansWifiChannel per i nodi
+  YansWifiPhyHelper wifiPhy = YansWifiPhyHelper::Default ();
+  YansWifiChannelHelper wifiChannel;
+  wifiChannel.SetPropagationDelay("ns3::ConstantSpeedPropagationDelayModel");
+  wifiChannel.AddPropagationLoss("ns3::RangePropagationLossModel");
+ 
+  double range = m_step * sqrt(2); 
+  std::cout << " \n range = " << range+2 << std::endl;
+   Config::SetDefault("ns3::RangePropagationLossModel::MaxRange",DoubleValue(m_hop_range *(range+2) /**sqrt(2)*/));
+  
+  // Set guard interval
+  wifiPhy.Set ("CcaMode1Threshold", DoubleValue (-96.0));
+  wifiPhy.Set ("ShortGuardEnabled", BooleanValue (true));
+  //Config::SetDefault ("ns3::LogDistancePropagationLossModel::ReferenceLoss", 	DoubleValue (40.046));
+  wifiPhy.SetChannel (wifiChannel.Create ());
+
+  
+ 
+ 
+  //some changes in parameters of Peer Management
+  Config::SetDefault("ns3::dot11s::PeerLink::MaxBeaconLoss",UintegerValue(20));
+  Config::SetDefault("ns3::dot11s::PeerLink::MaxPacketFailure",UintegerValue(5));
+  if (m_hop_range > 2.1) {
+   Config::SetDefault("ns3::dot11s::PeerLink::RetryTimeout", TimeValue (Seconds (35)));
+   Config::SetDefault("ns3::dot11s::PeerLink::HoldingTimeout", TimeValue (Seconds (35)));
+}
+
+  //some changes in HWMP
+    Config::SetDefault("ns3::dot11s::HwmpProtocol::Dot11MeshHWMPmaxPREQretries",UintegerValue(10));
+    Config::SetDefault("ns3::dot11s::HwmpProtocol::UnicastDataThreshold",UintegerValue(30));
+    Config::SetDefault("ns3::dot11s::HwmpProtocol::UnicastPreqThreshold",UintegerValue(30));
+// si questo dot11meshactivepathtimeout conta molto nel profilo "mesh" (non mesh2), perchè a prescindere se il link va bene lui fa scadere la tabella di routing dopo 
+//questo timeout A PRESCINDERE, infatti può ricalcolarla e può essere la stessa di prima 
+ Config::SetDefault("ns3::dot11s::HwmpProtocol::Dot11MeshHWMPactivePathTimeout",TimeValue (Seconds (m_step*sqrt(2)/2.5*m_vel_drone_doub)));
+//RIGA PRECEDENTE PER FARE SIMULAZIONE COL VECCHIO ROUTING PROTOCOL MA AGGIORNANDO SPESSO LE ROUTING TABLEs
+      Config::SetDefault("ns3::dot11s::HwmpProtocol::Dot11MeshHWMPpreqMinInterval", TimeValue(Seconds(0.5)));
+ Config::SetDefault("ns3::dot11s::HwmpProtocol::Dot11MeshHWMPperrMinInterval", TimeValue(Seconds(0.5)));
+     Config::SetDefault("ns3::dot11s::HwmpProtocol::RfFlag",BooleanValue(true));
+    Config::SetDefault("ns3::dot11s::HwmpProtocol::DoFlag",BooleanValue(false));
+    Config::SetDefault("ns3::dot11s::HwmpProtocol::RandomStart",TimeValue (Seconds (10)));
+ Config::SetDefault("ns3::dot11s::HwmpProtocol::Dot11MeshHWMPactiveRootTimeout",TimeValue (Seconds (5000000)));
+  Config::SetDefault("ns3::dot11s::HwmpProtocol::Dot11MeshHWMPpathToRootInterval",TimeValue (Seconds (m_step*sqrt(2)/2.5*m_vel_drone_doub)));
+ //Config::SetDefault("ns3::dot11s::HwmpProtocol::Dot11MeshHWMPpathToRootInterval",TimeValue (Seconds (150)));
+   
+ Config::SetDefault("ns3::dot11s::HwmpProtocol::MaxQueueSize",UintegerValue(30000));
+
+/*
+   * Create mesh helper and set stack installer to it
+   * Stack installer creates all needed protocols and install them to
+   * mesh point device
+   */
+   mesh = MeshHelper::Default ();
+   // di default è POLITICA SPREAD CHANNEL, ma nell'if successivo si deciderà la politica in base a m_chan, che ho 
+   // cambiato e messo a POLITICA ZERO CHANNEL
+   mesh.SetMacType ("RandomStart", TimeValue (Seconds (m_randomStart)));
+   mesh.SetStandard(WIFI_PHY_STANDARD_80211a);
+   
+  mesh.SetRemoteStationManager("ns3::ConstantRateWifiManager","DataMode",StringValue("OfdmRate54Mbps"),"RtsCtsThreshold",UintegerValue
+     (2500));
+
+   mesh2 = MeshHelper::Default();
+    // di default è POLITICA SPREAD CHANNEL, ma nell'if successivo si deciderà la politica in base a m_chan, che ho 
+   // cambiato e messo a POLITICA ZERO CHANNEL
+   mesh2.SetMacType ("RandomStart", TimeValue (Seconds (m_randomStart)));
+   mesh2.SetStandard(WIFI_PHY_STANDARD_80211a);
+   
+   mesh2.SetRemoteStationManager("ns3::ConstantRateWifiManager","DataMode",StringValue("OfdmRate54Mbps"),"RtsCtsThreshold",UintegerValue
+     (2500));
+
+
+  if (!Mac48Address (m_root.c_str ()).IsBroadcast ())//se il root è impostato a un indirizzo NON BROADCAST(c'è ! davanti), vuol    
+  // dire che c'è root e va impostato all'indirizzo trovato, Mac48 address
+    {
+      mesh.SetStackInstaller (m_stack, "Root", Mac48AddressValue (Mac48Address (m_root.c_str ())));
+    }
+  else
+    {
+      //If root is not set, we do not use "Root" attribute, because it
+      //is specified only for 11s
+      mesh.SetStackInstaller (m_stack);
+    }
+
+
+  if (!Mac48Address (m_root2.c_str ()).IsBroadcast ())//se il root è impostato a un indirizzo NON BROADCAST(c'è ! davanti), vuol    
+  // dire che c'è root e va impostato all'indirizzo trovato, Mac48 address
+    {
+      mesh2.SetStackInstaller (m_stack, "Root", Mac48AddressValue (Mac48Address (m_root2.c_str ())));
+    }
+  else
+    {
+      //If root is not set, we do not use "Root" attribute, because it
+      //is specified only for 11s
+      mesh2.SetStackInstaller (m_stack);
+    }
+ 
+ // IN CONCLUSIONE DEFAULT = NO ROOT
+  if (m_chan)
+    {
+      mesh.SetSpreadInterfaceChannels (MeshHelper::SPREAD_CHANNELS);//mesh point distribuiti su non overlapping 20Mhz channels
+      //mesh2.SetSpreadInterfaceChannels (MeshHelper::SPREAD_CHANNELS);//mesh point distribuiti su non overlapping 20Mhz channels
+    }
+  else
+    {
+      mesh.SetSpreadInterfaceChannels (MeshHelper::ZERO_CHANNEL);//tutti i  mesh point sul canale 0
+      mesh2.SetSpreadInterfaceChannels (MeshHelper::ZERO_CHANNEL);//tutti i  mesh point sul canale 0
+    }
+
+  // Set number of interfaces - default is single-interface mesh point
+  mesh.SetNumberOfInterfaces (m_nIfaces);
+  mesh2.SetNumberOfInterfaces (m_nIfaces);
+  // Install protocols and return container if MeshPointDevices
+  meshDevices = mesh2.Install (wifiPhy, nodes);
+  dronerelayDevices = mesh2.Install(wifiPhy, dronerelay);
+  droneDevices= mesh.Install(wifiPhy, drone);
+
+
+  
+
+  // Setup mobility - random grid topology with one node moving
+  MobilityHelper mobility;
+  mobility.SetPositionAllocator ("ns3::GridPositionAllocator",
+                                 "MinX", DoubleValue (0.0),
+                                 "MinY", DoubleValue (0.0),
+                                 "DeltaX", DoubleValue (m_step),
+                                 "DeltaY", DoubleValue (m_step),
+                                 "GridWidth", UintegerValue (4),
+                                 "LayoutType", StringValue ("RowFirst"));
+  // each object will be attached a static position.
+  // i.e., once set by the "position allocator", the
+  // position will never change.
+  mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
+                mobility.Install (nodes);
+          
+
+  //node 0 waiting to move
+         
+   
+   
+
+   /*    std::ostringstream os2, os3;
+       os2 << "ns3::ConstantRandomVariable[Constant=" << m_vel_drone << "]";
+       os3 << "ns3::ConstantRandomVariable[Constant=" << m_direction_drone << "]";  */
+     
+       
+
+      mobility.SetMobilityModel ("ns3::ConstantVelocityMobilityModel"); 
+      Ptr<ListPositionAllocator> positionAllocx = CreateObject<ListPositionAllocator> ();
+       positionAllocx->Add (Vector ((0.0) , (0.0),m_drone_height*3));
+       mobility.SetPositionAllocator(positionAllocx);
+       mobility.Install(drone);
+       Ptr<ListPositionAllocator> positionAllocy = CreateObject<ListPositionAllocator> ();
+       positionAllocy->Add (Vector (m_drone_height, (0.0),m_drone_height));
+       positionAllocy->Add (Vector ((0.0) , m_drone_height,m_drone_height));
+       mobility.SetPositionAllocator (positionAllocy);
+       mobility.Install(dronerelay);
+
+
+
+     Ptr<MobilityModel> position0;
+          //Ptr<Node> nodedrone = drone.Get(0)->GetObject<Node>();
+          Ptr<MobilityModel> positiondrone = drone.Get(0)->GetObject<MobilityModel>();
+          Vector posdrone = positiondrone->GetPosition();
+
+      Ptr<MobilityModel> position1;
+          //Ptr<Node> nodedrone = drone.Get(0)->GetObject<Node>();
+          Ptr<MobilityModel> positiondrone1 = dronerelay.Get(0)->GetObject<MobilityModel>();
+          Vector posdrone1 = positiondrone1->GetPosition();
+      
+
+     Ptr<MobilityModel> position2;
+          //Ptr<Node> nodedrone = drone.Get(0)->GetObject<Node>();
+          Ptr<MobilityModel> positiondrone2 = dronerelay.Get(1)->GetObject<MobilityModel>();
+          Vector posdrone2 = positiondrone2->GetPosition();
+
+    
+    
+    AsciiTraceHelper ascii;
+    MobilityHelper::EnableAsciiAll (ascii.CreateFileStream ("mymesh-mobility.mob"));
+     
+     
+      int i = 0;
+      int k = 0;
+      
+
+   for (NodeContainer::Iterator j = nodes.Begin ();
+       j != nodes.End (); ++j)
+    {
+      
+      k++;
+      Ptr<Node> object = *j;
+      Ptr<MobilityModel> position = object->GetObject<MobilityModel> ();
+      NS_ASSERT (position != 0);
+      
+      if(i==0)
+      {
+      position0 = object->GetObject<MobilityModel> ();
+i++;
+}
+      double dis = position->GetDistanceFrom(position0);
+      Vector pos = position->GetPosition ();
+  //printing node positions
+   if (m_print_info== true ) {
+     std::cout << "Position " << k << ") x=" <<  pos.x << ", y=" << pos.y << ", z=" << pos.z << std::endl;
+    std::cout << "DISTANCE FROM NODE 1 = " << dis << "\n" << std::endl; 
+    }
+}    
+
+   double disdrone = positiondrone->GetDistanceFrom(position0);
+   double disdrone1 = positiondrone1->GetDistanceFrom(position0);
+    double disdrone2 = positiondrone2->GetDistanceFrom(position0);
+  
+ if (m_print_info == true ) { 
+    std::cout << "Position of the drone : x=" << posdrone.x << ", y= ," << posdrone.y << ", z= " << posdrone.z << std::endl;
+    std::cout << "DISTANCE of the drone FROM NODE 1 = " << disdrone << "\n" << std::endl;
+    std::cout << "\n Position of the drone1 : x1=" << posdrone1.x << ", y1= ," << posdrone1.y << ", z1= " << posdrone1.z << std::endl;
+    std::cout << "DISTANCE of the drone1 FROM NODE 1 = " << disdrone1 << "\n" << std::endl;
+    std::cout << "\n Position of the drone2 : x2=" << posdrone2.x << ", y2= ," << posdrone2.y << ", z2= " << posdrone2.z << std::endl;
+    std::cout << "DISTANCE of the drone2 FROM NODE 1 = " << disdrone2 << "\n" << std::endl;
+    }
+  
+   Config::Connect ("/NodeList/16/$ns3::MobilityModel/CourseChange",
+                   MakeBoundCallback (&CourseChange,position0,m_square_side,m_drone_height));
+    Config::Connect ("/NodeList/17/$ns3::MobilityModel/CourseChange",
+                   MakeBoundCallback (&CourseChange,position0,m_square_side,m_drone_height));
+    Config::Connect ("/NodeList/18/$ns3::MobilityModel/CourseChange",
+                   MakeBoundCallback (&CourseChange,position0,m_square_side,m_drone_height));
+   
+  if (m_pcap)
+    wifiPhy.EnablePcap (std::string ("mp-"),nodes,false);
+    wifiPhy.EnablePcap(std::string("drone"),drone,false);
+}
+
+
+void
+MeshTest::InstallInternetStack ()
+{
+  InternetStackHelper internetStack;
+  internetStack.Install (nodes);
+  internetStack.Install(drone);
+  internetStack.Install(dronerelay);
+ /* Ipv4AddressHelper address2;
+  address2.SetBase("10.2.1.0","255.255.255.0");*/
+  Ipv4AddressHelper address;
+  address.SetBase ("10.1.1.0", "255.255.255.0");
+  interfaces = address.Assign (meshDevices);
+  droneinterfaces = address.Assign(droneDevices);
+  dronerelayinterfaces = address.Assign(dronerelayDevices);
+  //printing of the IP addresses 
+/* std::cout << "Address of the server : " << interfaces.GetAddress(0) << std::endl;
+  std::cout << "Address of the client : " << droneinterfaces.GetAddress(0) << "\n"<< std::endl; */
+  
+}
+void
+MeshTest::InstallApplication ()
+{
+
+ 
+ 
+  /*UdpServerHelper Server (9);
+  ApplicationContainer serverApps = Server.Install (nodes.Get (0));
+  serverApps.Start (Seconds (3.0));
+  serverApps.Stop (Seconds (m_totalTime)); */
+
+  //in questo caso il server sono tre droni, è lì il video, quindi tre server
+   EvalvidServerHelper Server (9);
+ 
+  switch (m_type)
+    {
+    case 36024: 
+       {
+           Server.SetAttribute ("SenderTraceFilename",StringValue("bbb360p24.st"));//StringValue("sky1080p25.st"));//StringValue("st_highway_cif60.st"));
+           break;  
+      }
+     case 36048: 
+       {
+           Server.SetAttribute ("SenderTraceFilename",StringValue("bbb360p48.st"));//StringValue("sky1080p25.st"));//StringValue("st_highway_cif60.st"));
+           break;  
+      }
+     case 72024: 
+       {
+           Server.SetAttribute ("SenderTraceFilename",StringValue("bbb720p24.st"));//StringValue("sky1080p25.st"));//StringValue("st_highway_cif60.st"));
+           break;  
+      }
+     case 72048: 
+       {
+           Server.SetAttribute ("SenderTraceFilename",StringValue("bbb720p48.st"));//StringValue("sky1080p25.st"));//StringValue("st_highway_cif60.st"));
+           break;  
+      }
+     case 108024: 
+       {
+           Server.SetAttribute ("SenderTraceFilename",StringValue("bbb1080p24.st"));//StringValue("sky1080p25.st"));//StringValue("st_highway_cif60.st"));
+           break;  
+      }
+     case 108048: 
+       {
+           Server.SetAttribute ("SenderTraceFilename",StringValue("bbb1080p48.st"));//StringValue("sky1080p25.st"));//StringValue("st_highway_cif60.st"));
+           break;  
+      }
+    case 352288: 
+       {
+           Server.SetAttribute ("SenderTraceFilename",StringValue("st_highway_cif.st"));//StringValue("sky1080p25.st"));//StringValue("st_highway_cif60.st"));
+           break;  
+      }
+
+     case 704576: 
+       {
+           Server.SetAttribute ("SenderTraceFilename",StringValue("ice_4cif.st"));//StringValue("sky1080p25.st"));//StringValue("st_highway_cif60.st"));
+           break;  
+      }
+    case 352: //high migliorato 
+       {
+           Server.SetAttribute ("SenderTraceFilename",StringValue("high.st"));//StringValue("sky1080p25.st"));//StringValue("st_highway_cif60.st"));
+           break;  
+      }
+    case 48024: //sin 480p 
+       {
+           Server.SetAttribute ("SenderTraceFilename",StringValue("sin480p24.st"));//StringValue("sky1080p25.st"));//StringValue("st_highway_cif60.st"));
+           break;  
+      }
+    case 480302: //drone 480p 
+       {
+           Server.SetAttribute ("SenderTraceFilename",StringValue("drone480p.st"));//StringValue("sky1080p25.st"));//StringValue("st_highway_cif60.st"));
+           break;  
+      }
+    default:
+      {
+        Server.SetAttribute ("SenderTraceFilename",StringValue("sin720p24.st"));//StringValue("sky1080p25.st"));//StringValue("st_highway_cif60.st"));
+        break;
+      }
+    }
+  Server.SetAttribute ("SenderDumpFilename", StringValue("sdaaaPRO_a01"));
+  Server.SetAttribute ("PacketPayload",UintegerValue(1024));
+  ApplicationContainer Apps = Server.Install (drone.Get(0));
+  Apps.Start (Seconds (3.0));
+  Apps.Stop (Seconds (m_totalTime));
+
+  /*EvalvidServerHelper Server1 (9);
+  Server1.SetAttribute ("SenderTraceFilename", StringValue("st_highway_cif.st"));
+  Server1.SetAttribute ("SenderDumpFilename", StringValue("sd_a01_drone1"));
+  Server1.SetAttribute ("PacketPayload",UintegerValue(1024));
+  Apps = Server1.Install (drone.Get(1));
+  Apps.Start (Seconds (3.0));
+  Apps.Stop (Seconds (m_totalTime));*/
+
+  /*UdpServerHelper Serverprova(9);
+  ApplicationContainer provaApps= Serverprova.Install(nodes.Get(0));
+  provaApps.Start(Seconds (4.0));
+  provaApps.Stop (Seconds (m_totalTime));*/
+
+ /*UdpClientHelper Clientprova (interfaces.GetAddress (0), 10);
+  Clientprova.SetAttribute ("MaxPackets", UintegerValue(70));//("MaxPackets", UintegerValue ((uint32_t)(m_totalTime*(1/m_packetInterval))));
+  Clientprova.SetAttribute ("Interval", TimeValue (Seconds (2)));
+  Clientprova.SetAttribute ("PacketSize", UintegerValue (1024));
+  ApplicationContainer clientApps = Clientprova.Install (dronerelay.Get (0)); 
+  clientApps = Clientprova.Install(dronerelay.Get(1));
+  clientApps.Start (Seconds (m_regime));
+  clientApps.Stop (Seconds (m_totalTime)); 
+  
+  UdpServerHelper relayServer(10);
+  ApplicationContainer serverApps = relayServer.Install (nodes.Get (0));
+  serverApps.Start (Seconds (m_regime-1));
+  serverApps.Stop (Seconds (m_totalTime));*/
+
+ 
+  //client, il nodo fermo a terra, chiede il video
+  /*UdpClientHelper Client (interfaces.GetAddress (0), 9);
+  Client.SetAttribute ("MaxPackets", UintegerValue(3));//("MaxPackets", UintegerValue ((uint32_t)(m_totalTime*(1/m_packetInterval))));
+  Client.SetAttribute ("Interval", TimeValue (Seconds (m_packetInterval)));
+  Client.SetAttribute ("PacketSize", UintegerValue (m_packetSize));
+  ApplicationContainer clientApps = Client.Install (drone.Get (0)); 
+  clientApps.Start (Seconds (m_packetInterval+m_regime));
+  clientApps.Stop (Seconds (m_totalTime)); */
+
+  EvalvidClientHelper Client (droneinterfaces.GetAddress (0),9);
+  Client.SetAttribute ("ReceiverDumpFilename", StringValue("rdaaaPRO_a01"));
+  Apps = Client.Install (nodes.Get (0));
+  Apps.Start  (Seconds (m_regime));         //(m_step*sqrt(2)/m_vel_drone_doub)+
+  Apps.Stop (Seconds (m_totalTime));
+
+ /* EvalvidClientHelper Client1 (droneinterfaces.GetAddress (1),9);
+  Client1.SetAttribute ("ReceiverDumpFilename", StringValue("rd_a01_drone1"));
+  Apps = Client1.Install (nodes.Get (0));
+  Apps.Start  (Seconds (m_regime));         //(m_step*sqrt(2)/m_vel_drone_doub)+
+  Apps.Stop (Seconds (m_totalTime));*/
+
+  
+   //------------------------------------------------------------
+  //-- Setup stats and data collection
+  //--------------------------------------------
+
+  // Create a DataCollector object to hold information about this run.
+ 
+  sstr1 << m_hop_range;
+   input = sstr1.str();
+  
+  sstr2 << "run-" << time(NULL),
+  runID = sstr2.str(),
+  data.DescribeRun (experiment, strategy,
+                    input,
+                    runID);
+
+  // Add any information we wish to record about this run.
+  data.AddMetadata ("author", "Antonio");
+  
+   // Create a counter to track how many frames are generated.  Updates
+  // are triggered by the trace signal generated by the WiFi MAC model
+  // object.  Here we connect the counter to the signal via the simple
+  // TxCallback() glue function defined above.
+  Ptr<CounterCalculator<uint32_t> > totalTx =
+    CreateObject<CounterCalculator<uint32_t> >();
+  totalTx->SetKey ("tx-frames(level 2)");
+  totalTx->SetContext ("drone");
+  Config::Connect ("/NodeList/16/DeviceList/*/$ns3::WifiNetDevice/Mac/MacTx",
+                   MakeBoundCallback (&TxCallback, totalTx));
+  data.AddDataCalculator (totalTx);
+
+  Ptr<CounterCalculator<uint32_t> > totalTx1 =
+    CreateObject<CounterCalculator<uint32_t> >();
+  totalTx1->SetKey ("tx1-frames(level 2)");
+  totalTx1->SetContext ("drone1");
+  Config::Connect ("/NodeList/17/DeviceList/*/$ns3::WifiNetDevice/Mac/MacTx",
+                   MakeBoundCallback (&TxCallback, totalTx1));
+  data.AddDataCalculator (totalTx1);
+
+   
+
+  Ptr<CounterCalculator<uint32_t> > totalTxdropped =
+    CreateObject<CounterCalculator<uint32_t> >();
+  totalTxdropped->SetKey ("tx-frames-dropped(level 2)");
+  totalTxdropped->SetContext ("drone");
+  Config::Connect ("/NodeList/16/DeviceList/*/$ns3::WifiNetDevice/Mac/MacTxDrop",
+                   MakeBoundCallback (&TxCallback, totalTxdropped));
+  data.AddDataCalculator (totalTxdropped);
+  
+  
+  // This is similar, but creates a counter to track how many frames
+  // are received.  Instead of our own glue function, this uses a
+  // method of an adapter class to connect a counter directly to the
+  // trace signal generated by the WiFi MAC.
+  Ptr<PacketCounterCalculator> MacRx =
+    CreateObject<PacketCounterCalculator>();
+  MacRx->SetKey ("rx-frames(level 2)");
+  MacRx->SetContext ("server");
+  Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/Mac/MacRx",
+                   MakeCallback (&PacketCounterCalculator::PacketUpdate,
+                                 MacRx));
+  data.AddDataCalculator (MacRx);
+
+   Ptr<PacketCounterCalculator> MacRxdropped =
+    CreateObject<PacketCounterCalculator>();
+  MacRxdropped->SetKey ("rx-frames dropped(level 2)");
+  MacRxdropped->SetContext ("server");
+  Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/Mac/MacRxDrop",
+                   MakeCallback (&PacketCounterCalculator::PacketUpdate,
+                                 MacRxdropped));
+  data.AddDataCalculator (MacRxdropped);
+  
+
+  // This counter tracks how many packets---as opposed to frames---are
+  // generated.  This is connected directly to a trace signal provided
+  // by our Sender class.
+ // Ptr<PacketCounterCalculator> appTx =
+   // CreateObject<PacketCounterCalculator>();
+  //appTx->SetKey ("sender-tx-packets");
+  //appTx->SetContext ("node[0]");
+  //Config::Connect ("/NodeList/0/ApplicationList/*/$Sender/Tx",
+    //               MakeCallback (&PacketCounterCalculator::PacketUpdate,
+      //                           appTx));
+  //data.AddDataCalculator (appTx);
+
+  //packet app layer received
+   //Ptr<PacketCounterCalculator> totalRx =
+    //CreateObject<PacketCounterCalculator>();
+  //totalRx->SetKey ("rx-packets(level 7)");
+  //totalRx->SetContext ("server");
+  //Config::Connect ("/NodeList/0/ApplicationList/*/$ns3::PacketSink/Rx",
+    //               MakeBoundCallback (&RxCallback,//PacketCounterCalculator::AddressPacketUpdate,
+      //                           totalRx));
+  //data.AddDataCalculator (totalRx);
+
+   Ptr<PacketCounterCalculator> totalRx =
+    CreateObject<PacketCounterCalculator>();
+  totalRx->SetKey ("rx-packets(level 7)");
+  totalRx->SetContext ("node");
+  Config::Connect ("/NodeList/0/ApplicationList/*/$ns3::EvalvidClient/Rx",
+                   MakeBoundCallback (&RxCallback,//PacketCounterCalculator::AddressPacketUpdate,
+                                 totalRx));
+  data.AddDataCalculator (totalRx);
+
+  
+  // Here a counter for received packets is directly manipulated by
+  // one of the custom objects in our simulation, the Receiver
+  // Application.  The Receiver object is given a pointer to the
+  // counter and calls its Update() method whenever a packet arrives.
+  /*Ptr<CounterCalculator<> > appRx =
+    CreateObject<CounterCalculator<> >();
+  appRx->SetKey ("receiver-rx-packets");
+  appRx->SetContext ("node[1]");
+  receiver->SetCounter (appRx);
+  data.AddDataCalculator (appRx);*/
+
+
+   //Ptr<PacketCounterCalculator> appTx = 
+   //CreateObject<PacketCounterCalculator>();
+  //appTx->SetKey ("sender-tx-packets");
+  //appTx->SetContext ("drone");
+  //Config::Connect ("/NodeList/16/ApplicationList/*/$ns3::BulkSendApplication/Tx",
+    //               MakeCallback (&PacketCounterCalculator::PacketUpdate,
+      //                           appTx));
+  //data.AddDataCalculator (appTx);
+  
+
+   Ptr<PacketCounterCalculator> appTx = 
+   CreateObject<PacketCounterCalculator>();
+  appTx->SetKey ("tx-packets(level 7)");
+  appTx->SetContext ("drone");
+  Config::Connect ("/NodeList/16/ApplicationList/*/$ns3::EvalvidServer/Tx",
+                   MakeCallback (&PacketCounterCalculator::PacketUpdate,
+                                 appTx));
+  data.AddDataCalculator (appTx);
+
+
+  Ptr<TimeMinMaxAvgTotalCalculator> RouteDiscoveryDelay =
+    CreateObject<TimeMinMaxAvgTotalCalculator>();
+  RouteDiscoveryDelay->SetKey ("route-delay[ns]");
+  RouteDiscoveryDelay->SetContext (".");
+  Config::Connect ("/NodeList/16/DeviceList/*/$ns3::MeshPointDevice/RoutingProtocol/$ns3::dot11s::HwmpProtocol/RouteDiscoveryTime",
+                   MakeBoundCallback (&RouteDiscoveryTimeSniffer,RouteDiscoveryDelay,m_print_info
+                                 ));
+  data.AddDataCalculator (RouteDiscoveryDelay);
+
+  Ptr<TimeMinMaxAvgTotalCalculator> PacketDelay =
+    CreateObject<TimeMinMaxAvgTotalCalculator>();
+  PacketDelay->SetKey ("packet-delay[ns]");
+  PacketDelay->SetContext (".");
+  Config::Connect ("/NodeList/0/ApplicationList/*/$ns3::EvalvidClient/Delay",
+                   MakeBoundCallback (&EndtoEndTimeSniffer,PacketDelay,m_print_delay
+                                 ));
+  data.AddDataCalculator (PacketDelay);
+
+    Ptr <MinMaxAvgTotalCalculator<uint8_t> > HopCount =
+    CreateObject<MinMaxAvgTotalCalculator<uint8_t> >();
+    HopCount->SetKey ("hopcount");
+    HopCount->SetContext (".");
+    Config::Connect ("/NodeList/16/DeviceList/*/$ns3::MeshPointDevice/RoutingProtocol/$ns3::dot11s::HwmpProtocol/HopCount",
+                   MakeBoundCallback (&HopCountSniffer,HopCount,m_print_info
+                                 ));
+    data.AddDataCalculator (HopCount);
+
+  Ptr<CounterCalculator<uint8_t> >  LinkOpen =
+    CreateObject<CounterCalculator<uint8_t>  >();
+    LinkOpen->SetKey ("linkopen");
+    LinkOpen->SetContext (".");
+    Config::Connect ("/NodeList/16/DeviceList/*/$ns3::dot11s::PeerManagementProtocol/LinkOpenmine",
+                   MakeBoundCallback (&LinkOpenCounter,LinkOpen,m_print_info
+                                 ));
+    data.AddDataCalculator (LinkOpen);
+
+   Ptr<CounterCalculator<uint8_t> >  LinkClose =
+    CreateObject<CounterCalculator<uint8_t>  >();
+    LinkClose->SetKey ("linkclosed");
+    LinkClose->SetContext (".");
+    Config::Connect ("/NodeList/16/DeviceList/*/$ns3::dot11s::PeerManagementProtocol/LinkClosemine",
+                   MakeBoundCallback (&LinkCloseCounter,LinkClose,m_print_info
+                                 ));
+    data.AddDataCalculator (LinkClose);
+
+
+  //Ptr<TimeMinMaxAvgTotalCalculator> EndtoEndDelay =
+   // CreateObject<TimeMinMaxAvgTotalCalculator>();
+  //EndtoEndDelay->SetKey ("endtoend-delay[ns]");
+  //EndtoEndDelay->SetContext (".");
+  //Config::Connect ("/NodeList/0/DeviceList/*/$ns3::UdpEchoServer/EndtoEndDelay",
+        //           MakeBoundCallback (&EndtoEndTimeSniffer,EndtoEndDelay
+   //   ));
+  //data.AddDataCalculator (EndtoEndDelay);
+ 
+}
+
+int
+MeshTest::Run ()
+{
+  
+   
+  CreateNodes ();
+  InstallInternetStack ();
+  InstallApplication ();
+
+
+   Simulator::Schedule(Seconds (m_regime) , &ChangeVelocity, drone.Get(0), Vector (m_vel_drone_doub/sqrt(2), m_vel_drone_doub/sqrt(2),0.0));
+   Simulator::Schedule(Seconds (m_regime+(3*(m_step*sqrt(2)/m_vel_drone_doub))) , &ChangeVelocity, drone.Get(0), Vector (0.0,0.0,0.0));
+   for (int i=0; i<2; i++) {
+   Simulator::Schedule(Seconds (m_regime) , &ChangeVelocity, dronerelay.Get(i), Vector (m_vel_drone_doub/sqrt(2), m_vel_drone_doub/sqrt(2),0.0));
+   Simulator::Schedule(Seconds (m_regime+(2.4*(m_step*sqrt(2)/m_vel_drone_doub))) , &ChangeVelocity, dronerelay.Get(i), Vector (0.0,0.0,0.0));
+  }
+   
+
+   Simulator::Schedule (Seconds (m_totalTime), &MeshTest::Report, this);
+
+   Ptr<FlowMonitor> flowMonitor;
+   FlowMonitorHelper flowHelper;
+   flowMonitor = flowHelper.InstallAll();
+
+  
+  Simulator::Stop (Seconds (m_totalTime));
+  Simulator::Run ();  
+  flowMonitor->SerializeToXmlFile("Statistics.xml", false, true);
+  //double delay_value = (double) 
+
+    // Pick an output writer based in the requested format.
+  Ptr<DataOutputInterface> output = 0;
+  if (format == "omnet") {
+     
+      NS_LOG_INFO ("Creating omnet formatted data output.");
+      output = CreateObject<OmnetDataOutput>();
+    } else if (format == "db") {
+      #ifdef STATS_HAS_SQLITE3
+      NS_LOG_INFO ("Creating sqlite formatted data output.");
+     
+      output = CreateObject<SqliteDataOutput>();
+   #endif
+     
+    } else {
+     
+      NS_LOG_ERROR ("Unknown output format " << format);
+    }
+
+Ptr <CounterCalculator<uint32_t> > mediadelay2000 =
+    CreateObject<CounterCalculator<uint32_t> >();
+    mediadelay2000->SetKey ("mediadelay2000");
+    mediadelay2000->SetContext (".");
+   data.AddDataCalculator(mediadelay2000);
+   mediadelay2000->Update(med2000);
+
+   Ptr <CounterCalculator<uint32_t> > mediadelay4000 =
+    CreateObject<CounterCalculator<uint32_t> >();
+    mediadelay4000->SetKey ("mediadelay4000");
+    mediadelay4000->SetContext (".");
+   data.AddDataCalculator(mediadelay4000);
+   mediadelay4000->Update(med4000);
+
+     Ptr <CounterCalculator<uint32_t> > mediadelay6000 =
+    CreateObject<CounterCalculator<uint32_t> >();
+    mediadelay6000->SetKey ("mediadelay6000");
+    mediadelay6000->SetContext (".");
+   data.AddDataCalculator(mediadelay6000);
+   mediadelay6000->Update(med6000);
+
+   Ptr <CounterCalculator<uint32_t> > mediadelay8000 =
+    CreateObject<CounterCalculator<uint32_t> >();
+    mediadelay8000->SetKey ("mediadelay8000");
+    mediadelay8000->SetContext (".");
+   data.AddDataCalculator(mediadelay8000);
+   mediadelay8000->Update(med8000);
+
+  Ptr <CounterCalculator<uint32_t> > mediadelay10000 =
+    CreateObject<CounterCalculator<uint32_t> >();
+    mediadelay10000->SetKey ("mediadelay10000");
+    mediadelay10000->SetContext (".");
+   data.AddDataCalculator(mediadelay10000);
+   mediadelay10000->Update(med10000);
+
+     Ptr <CounterCalculator<uint32_t> > mediadelay12000 =
+    CreateObject<CounterCalculator<uint32_t> >();
+    mediadelay12000->SetKey ("mediadelay12000");
+    mediadelay12000->SetContext (".");
+   data.AddDataCalculator(mediadelay12000);
+   mediadelay12000->Update(med12000);
+
+    Ptr <CounterCalculator<uint32_t> > mediadelay14000 =
+    CreateObject<CounterCalculator<uint32_t> >();
+    mediadelay14000->SetKey ("mediadelay14000");
+    mediadelay14000->SetContext (".");
+   data.AddDataCalculator(mediadelay14000);
+   mediadelay14000->Update(med14000);
+
+   Ptr <CounterCalculator<uint32_t> > mediadelay16000 =
+    CreateObject<CounterCalculator<uint32_t> >();
+    mediadelay16000->SetKey ("mediadelay16000");
+    mediadelay16000->SetContext (".");
+   data.AddDataCalculator(mediadelay16000);
+   mediadelay16000->Update(med16000);
+
+    Ptr <CounterCalculator<uint32_t> > mediadelay18000 =
+    CreateObject<CounterCalculator<uint32_t> >();
+    mediadelay18000->SetKey ("mediadelay18000");
+    mediadelay18000->SetContext (".");
+   data.AddDataCalculator(mediadelay18000);
+   mediadelay18000->Update(med18000);
+
+  // Finally, have that writer interrogate the DataCollector and save
+  // the results.
+  if (output != 0)
+    output->Output (data);
+
+  Simulator::Destroy (); 
+   
+  return 0;
+}
+void
+MeshTest::Report ()
+{
+  unsigned n (0);
+  for (NetDeviceContainer::Iterator i = meshDevices.Begin (); i != meshDevices.End (); ++i, ++n)
+    {
+      std::ostringstream os;
+      os << "mp-report-" << n << ".xml";
+      //std::cerr << "Printing mesh point device #" << n << " diagnostics to " << os.str () << "\n";
+      std::ofstream of;
+      of.open (os.str ().c_str ());
+      if (!of.is_open ())
+        {
+          std::cerr << "Error: Can't open file " << os.str () << "\n";
+          return;
+        }
+      mesh.Report (*i, of);
+      of.close ();
+    }
+
+  unsigned n1 (0);
+  for (NetDeviceContainer::Iterator i = droneDevices.Begin (); i != droneDevices.End (); ++i, ++n1)
+    {
+      std::ostringstream os1;
+      os1 << "drone-report-" << n << ".xml";
+      //std::cerr << "Printing drone device #" << n << " diagnostics to " << os1.str () << "\n";
+      std::ofstream of1;
+      of1.open (os1.str ().c_str ());
+      if (!of1.is_open ())
+        {
+          std::cerr << "Error: Can't open file " << os1.str () << "\n";
+          return;
+        }
+      mesh.Report (*i, of1);
+      of1.close ();
+    }
+}
+int
+main (int argc, char *argv[])
+{ 
+  
+  
+   MeshTest t; 
+  t.Configure (argc, argv);
+  return t.Run ();
+            
+}
